@@ -1,0 +1,10 @@
+.gradle
+out
+*/build
+.DS_Store
+.idea
+spark-warehouse
+*.ipr
+*.iml
+*.iws
+*~

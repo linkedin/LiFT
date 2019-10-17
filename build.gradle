@@ -1,0 +1,11 @@
+allprojects {
+  apply plugin: "eclipse"
+  apply plugin: "idea"
+
+  group = "com.linkedin.lift"
+
+  repositories {
+    jcenter()
+    mavenCentral()
+  }
+}

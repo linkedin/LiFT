@@ -1,0 +1,19 @@
+Copyright 2020 LinkedIn Corporation
+All Rights Reserved.
+
+Licensed under the BSD 2-Clause License (the "License").
+See License in the project root for license information.
+
+================================================================================
+
+This product uses Gradle (https://github.com/gradle/gradle) as its build system
+and includes the Gradle wrapper script.
+Copyright 2020 Gradle
+License: Apache-2.0
+
+========================================================================
+External dependencies
+========================================================================
+In addition, this product automatically loads third party code from an external repository.
+Such third party code is subject to other license terms than as set forth above.
+In addition, such third party code may also depend on and load multiple tiers of dependencies.
