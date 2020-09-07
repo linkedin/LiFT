@@ -1,0 +1,25 @@
+// Shipkit documentation: https://github.com/mockito/shipkit/blob/master/docs/getting-started.md
+shipkit {
+    gitHub.repository = "linkedin/LiFT"
+    gitHub.readOnlyAuthToken = "cccb537c0a5ddeb4bfdb2dfa307180e2b42a40ec"
+    gitHub.writeAuthToken = System.getenv("GH_WRITE_TOKEN")
+}
+
+allprojects {
+    plugins.withId("org.shipkit.bintray") {
+
+        //Bintray configuration is handled by JFrog Bintray Gradle Plugin
+        //For reference see the official documentation: https://github.com/bintray/gradle-bintray-plugin
+        bintray {
+            key = System.getenv("BINTRAY_API_KEY")
+            pkg {
+                repo = 'maven'
+                user = 'sriramvasudevan'
+                userOrg = 'linkedin'
+                name = 'LiFT'
+                licenses = ['BSD 2-CLAUSE']
+                labels = ['spark', 'fairness', 'machine learning']
+            }
+        }
+    }
+}
