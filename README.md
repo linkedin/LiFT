@@ -57,10 +57,16 @@ It is recommended to use Scala 2.11.8 and Spark 2.3.0. To build, run the followi
 ```
 This will produce a JAR file in the ``./lift/build/libs/`` directory.
 
-If you want to use the library with Spark 2.4, you can specify this when running the build command.
+If you want to use the library with Spark 2.4 (and the Scala 2.11.8 default), you can specify this when running the build command.
 
 ```bash
 ./gradlew build -PsparkVersion=2.4.3
+```
+
+You can also build an artifact with Spark 2.4 and Scala 2.12.
+
+```bash
+./gradlew build -PsparkVersion=2.4.3 -PscalaVersion=2.12.11
 ```
 
 Tests typically run with the `test` task. If you want to force-run all tests, you can use:

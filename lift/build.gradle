@@ -1,23 +1,27 @@
 import org.gradle.util.VersionNumber
 
 plugins {
-  // Apply the scala plugin to add support for Scala
   id 'scala'
 }
 
-def sparkVersion = findProperty("sparkVersion") ?: "2.3.0"
+def scalaVersion = findProperty("scalaVersion") ?: "2.11.8"  // Scala 2.11.8 is the default Scala build version.
+println "Scala version: " + scalaVersion
+// If scalaVersion == "2.11.8", then scalaVersionShort == "2.11".
+def scalaVersionShort = VersionNumber.parse(scalaVersion).getMajor() + "." + VersionNumber.parse(scalaVersion).getMinor()
+
+def sparkVersion = findProperty("sparkVersion") ?: "2.3.0"  // Spark 2.3.0 is the default Spark build version.
 println "Spark version: " + sparkVersion
 
 dependencies {
   if(VersionNumber.parse(sparkVersion) >= VersionNumber.parse("2.4.0")) {
-    compile("org.apache.spark:spark-avro_2.11:" + sparkVersion)
+    compile("org.apache.spark:spark-avro_" + scalaVersionShort + ":" + sparkVersion)
   } else {
-    compile("com.databricks:spark-avro_2.11:4.0.0")
+    compile("com.databricks:spark-avro_" + scalaVersionShort + ":4.0.0")
   }
-  compile("com.github.scopt:scopt_2.11:3.5.0")
-  compile("org.apache.spark:spark-core_2.11:" + sparkVersion)
-  compile("org.apache.spark:spark-sql_2.11:" + sparkVersion)
-  compile("org.scalatest:scalatest_2.11:2.2.6")
+  compile("com.github.scopt:scopt_" + scalaVersionShort + ":3.5.0")
+  compile("org.apache.spark:spark-core_" + scalaVersionShort + ":" + sparkVersion)
+  compile("org.apache.spark:spark-sql_" + scalaVersionShort + ":" + sparkVersion)
+  compile("org.scalatest:scalatest_" + scalaVersionShort + ":3.1.0")
   compile("org.testng:testng:6.8.8")
 }
 
@@ -25,4 +29,4 @@ test {
   useTestNG()
 }
 
-archivesBaseName = "${project.name}_2.11"
+archivesBaseName = "${project.name}_${sparkVersion}_${scalaVersionShort}"

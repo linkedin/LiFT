@@ -3,6 +3,7 @@ shipkit {
     gitHub.repository = "linkedin/LiFT"
     gitHub.readOnlyAuthToken = "cccb537c0a5ddeb4bfdb2dfa307180e2b42a40ec"
     gitHub.writeAuthToken = System.getenv("GH_WRITE_TOKEN")
+    git.releasableBranchRegex = "main|release/.+"
 }
 
 allprojects {
