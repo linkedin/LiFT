@@ -1,4 +1,5 @@
 # The LinkedIn Fairness Toolkit (LiFT)
+[![Build Status](https://travis-ci.com/linkedin/LiFT.svg?branch=main)](https://travis-ci.com/linkedin/LiFT)
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](LICENSE)
 
 The LinkedIn Fairness Toolkit (LiFT) is a Scala/Spark library that enables the measurement of fairness in large scale machine learning workflows.
