@@ -1,5 +1,6 @@
 # The LinkedIn Fairness Toolkit (LiFT)
 [![Build Status](https://travis-ci.com/linkedin/LiFT.svg?branch=main)](https://travis-ci.com/linkedin/LiFT)
+[![Download](https://api.bintray.com/packages/linkedin/maven/LiFT/images/download.svg)](https://bintray.com/linkedin/maven/LiFT/_latestVersion)
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](LICENSE)
 
 The LinkedIn Fairness Toolkit (LiFT) is a Scala/Spark library that enables the measurement of fairness in large scale machine learning workflows.
@@ -77,14 +78,19 @@ Tests typically run with the `test` task. If you want to force-run all tests, yo
 ```
 
 
-### Using the JAR File
+### Add a LiFT dependency to your project
+
+Please check [Bintray](https://bintray.com/beta/#/linkedin/maven/LiFT) for the latest artifact versions.
+
+#### Using the JAR File
 
 Depending on the mode of usage, the built JAR can be deployed as part of an offline data pipeline, depended 
 upon to build jobs using its APIs, or added to the classpath of a Spark Jupyter notebook or a Spark Shell instance. For
 example:
 ```bash
-$SPARK_HOME/bin/spark-shell --jars target/lift_2.11.jar
+$SPARK_HOME/bin/spark-shell --jars target/lift_2.3.0_2.11_0.1.3.jar
 ```
+
 
 ### Usage Examples
 

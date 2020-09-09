@@ -4,6 +4,7 @@ shipkit {
     gitHub.readOnlyAuthToken = "cccb537c0a5ddeb4bfdb2dfa307180e2b42a40ec"
     gitHub.writeAuthToken = System.getenv("GH_WRITE_TOKEN")
     git.releasableBranchRegex = "main|release/.+"
+    team.developers = ['sriramvasudevan:Sriram Vasudevan']
 }
 
 allprojects {
@@ -20,6 +21,22 @@ allprojects {
                 name = 'LiFT'
                 licenses = ['BSD 2-CLAUSE']
                 labels = ['spark', 'fairness', 'machine learning']
+                description = 'A Scala/Spark library that enables the measurement of fairness in large scale machine learning workflows.'
+            }
+        }
+    }
+
+    plugins.withId("org.shipkit.java-publish") {
+        publishing.publications.javaLibrary.pom.withXml {
+            //refer to Groovy xml Node reference for more info how to manipulate xml
+            asNode().licenses.replaceNode {
+                licenses {
+                    license {
+                        name "BSD 2-CLAUSE"
+                        url "https://github.com/linkedin/LiFT/blob/main/LICENSE"
+                        distribution "repo"
+                    }
+                }
             }
         }
     }
