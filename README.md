@@ -78,11 +78,11 @@ Tests typically run with the `test` task. If you want to force-run all tests, yo
 ```
 
 
-### Add a LiFT dependency to your project
+### Add a LiFT Dependency to Your Project
 
 Please check [Bintray](https://bintray.com/beta/#/linkedin/maven/LiFT) for the latest artifact versions.
 
-#### Gradle example
+#### Gradle Example
 
 The artifacts are available in JCenter, so you can specify the JCenter repository in the top-level build.gradle file.
 
