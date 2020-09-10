@@ -82,13 +82,41 @@ Tests typically run with the `test` task. If you want to force-run all tests, yo
 
 Please check [Bintray](https://bintray.com/beta/#/linkedin/maven/LiFT) for the latest artifact versions.
 
+#### Gradle example
+
+The artifacts are available in JCenter, so you can specify the JCenter repository in the top-level build.gradle file.
+
+```
+repositories {
+    jcenter()
+}
+```
+
+Add the LiFT dependency to the module-level `build.gradle` file. Here are some examples for multiple recent Spark/Scala version combinations:
+
+```
+dependencies {
+    compile 'com.linkedin.lift:lift_2.3.0_2.11:0.1.4'
+}
+```
+```
+dependencies {
+    compile 'com.linkedin.lift:lift_2.4.3_2.11:0.1.4'
+}
+```
+```
+dependencies {
+    compile 'com.linkedin.lift:lift_2.4.3_2.12:0.1.4'
+}
+```
+
 #### Using the JAR File
 
 Depending on the mode of usage, the built JAR can be deployed as part of an offline data pipeline, depended 
 upon to build jobs using its APIs, or added to the classpath of a Spark Jupyter notebook or a Spark Shell instance. For
 example:
 ```bash
-$SPARK_HOME/bin/spark-shell --jars target/lift_2.3.0_2.11_0.1.3.jar
+$SPARK_HOME/bin/spark-shell --jars target/lift_2.3.0_2.11_0.1.4.jar
 ```
 
 
