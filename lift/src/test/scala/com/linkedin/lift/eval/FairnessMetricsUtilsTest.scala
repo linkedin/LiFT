@@ -1,6 +1,7 @@
 package com.linkedin.lift.eval
 
-import com.linkedin.lift.lib.testing.TestValues
+import com.linkedin.lift.lib.testing.{TestUtils, TestValues}
+import com.linkedin.lift.lib.testing.TestValues.JoinedData
 import com.linkedin.lift.types.{Distribution, FairnessResult, ModelPrediction}
 import org.testng.Assert
 import org.testng.annotations.Test
@@ -209,25 +210,35 @@ class FairnessMetricsUtilsTest {
 
   @Test(description = "Compute model metrics")
   def testComputeModelMetrics(): Unit = {
-    val distribution = Distribution(Map(
-      Map("gender" -> "MALE", "label" -> "0.0", "predicted" -> "1.0") -> 0.2,
-      Map("gender" -> "MALE", "label" -> "1.0", "predicted" -> "1.0") -> 0.1,
-      Map("gender" -> "MALE", "label" -> "0.0", "predicted" -> "0.0") -> 0.1,
-      Map("gender" -> "MALE", "label" -> "1.0", "predicted" -> "0.0") -> 0.1,
-      Map("gender" -> "FEMALE", "label" -> "0.0", "predicted" -> "1.0") -> 0.1,
-      Map("gender" -> "FEMALE", "label" -> "1.0", "predicted" -> "1.0") -> 0.0,
-      Map("gender" -> "FEMALE", "label" -> "0.0", "predicted" -> "0.0") -> 0.1,
-      Map("gender" -> "FEMALE", "label" -> "1.0", "predicted" -> "0.0") -> 0.1,
-      Map("gender" -> "UNKNOWN", "label" -> "0.0", "predicted" -> "1.0") -> 0.0,
-      Map("gender" -> "UNKNOWN", "label" -> "1.0", "predicted" -> "1.0") -> 0.1,
-      Map("gender" -> "UNKNOWN", "label" -> "0.0", "predicted" -> "0.0") -> 0.05,
-      Map("gender" -> "UNKNOWN", "label" -> "1.0", "predicted" -> "0.0") -> 0.05))
-    val args = MeasureDatasetFairnessMetricsCmdLineArgs(
+    val testData = Seq(
+      JoinedData(memberId = 1, label = "0.0", predicted = "1.0", gender = "MALE"),
+      JoinedData(memberId = 2, label = "0.0", predicted = "1.0", gender = "MALE"),
+      JoinedData(memberId = 3, label = "0.0", predicted = "1.0", gender = "MALE"),
+      JoinedData(memberId = 4, label = "0.0", predicted = "1.0", gender = "MALE"),
+      JoinedData(memberId = 5, label = "1.0", predicted = "1.0", gender = "MALE"),
+      JoinedData(memberId = 6, label = "1.0", predicted = "1.0", gender = "MALE"),
+      JoinedData(memberId = 7, label = "0.0", predicted = "0.0", gender = "MALE"),
+      JoinedData(memberId = 9, label = "0.0", predicted = "0.0", gender = "MALE"),
+      JoinedData(memberId = 9, label = "1.0", predicted = "0.0", gender = "MALE"),
+      JoinedData(memberId = 10, label = "1.0", predicted = "0.0", gender = "MALE"),
+      JoinedData(memberId = 11, label = "0.0", predicted = "1.0", gender = "FEMALE"),
+      JoinedData(memberId = 12, label = "0.0", predicted = "1.0", gender = "FEMALE"),
+      JoinedData(memberId = 13, label = "0.0", predicted = "0.0", gender = "FEMALE"),
+      JoinedData(memberId = 14, label = "0.0", predicted = "0.0", gender = "FEMALE"),
+      JoinedData(memberId = 15, label = "1.0", predicted = "0.0", gender = "FEMALE"),
+      JoinedData(memberId = 16, label = "1.0", predicted = "0.0", gender = "FEMALE"),
+      JoinedData(memberId = 17, label = "1.0", predicted = "1.0", gender = "UNKNOWN"),
+      JoinedData(memberId = 18, label = "1.0", predicted = "1.0", gender = "UNKNOWN"),
+      JoinedData(memberId = 19, label = "0.0", predicted = "0.0", gender = "UNKNOWN"),
+      JoinedData(memberId = 20, label = "1.0", predicted = "0.0", gender = "UNKNOWN"))
+    val df = TestUtils.createDFFromProduct(TestValues.spark, testData)
+    val args = MeasureModelFairnessMetricsCmdLineArgs(
       labelField = "label",
+      scoreField = "predicted",
       protectedAttributeField = "gender",
       distanceMetrics = Seq("KL_DIVERGENCE", "DEMOGRAPHIC_PARITY", "EQUALIZED_ODDS"),
       overallMetrics = Map("THEIL_L_INDEX" -> "", "THEIL_T_INDEX" -> ""),
-      benefitMetrics = Seq("SKEWS"))
+      distanceBenefitMetrics = Seq("SKEWS"))
 
     // Model distance metrics
     val referenceDistr = Distribution(Map(
@@ -237,8 +248,8 @@ class FairnessMetricsUtilsTest {
       Map("gender" -> "FEMALE", "predicted" -> "0.0") -> 0.16666,
       Map("gender" -> "UNKNOWN", "predicted" -> "1.0") -> 0.16666,
       Map("gender" -> "UNKNOWN", "predicted" -> "0.0") -> 0.16666))
-    val actualMetrics = FairnessMetricsUtils.computeDatasetMetrics(distribution,
-      Some(referenceDistr), args, "predicted")
+    val actualMetrics = FairnessMetricsUtils.computeModelMetrics(df,
+      Some(referenceDistr), args)
     Assert.assertEquals(actualMetrics, Seq(
       FairnessResult(resultType = "KL_DIVERGENCE",
         parameters = Distribution(Map(
@@ -248,7 +259,7 @@ class FairnessMetricsUtilsTest {
           Map("gender" -> "FEMALE", "predicted" -> "0.0") -> 0.16666,
           Map("gender" -> "FEMALE", "predicted" -> "1.0") -> 0.16666,
           Map("gender" -> "UNKNOWN", "predicted" -> "0.0") -> 0.16666)).toString,
-        resultValOpt = Some(0.13852315605014068),
+        resultValOpt = Some(0.13852315605014037),
         constituentVals = Map()),
       FairnessResult(resultType = "DEMOGRAPHIC_PARITY",
         resultValOpt = None,
@@ -274,19 +285,19 @@ class FairnessMetricsUtilsTest {
         resultType = "Benefit Map for SKEWS",
         resultValOpt = None,
         constituentVals = Map(
-          Map("gender" -> "FEMALE", "predicted" -> "1.0") -> -0.058840500022933395,
-          Map("gender" -> "UNKNOWN", "predicted" -> "0.0") -> -0.058840500022933395,
-          Map("gender" -> "UNKNOWN", "predicted" -> "1.0") -> -0.058840500022933395,
-          Map("gender" -> "MALE", "predicted" -> "0.0") -> 0.028170876966696262,
-          Map("gender" -> "FEMALE", "predicted" -> "0.0") -> 0.028170876966696262,
-          Map("gender" -> "MALE", "predicted" -> "1.0") -> 0.10821358464023273)),
+          Map("predicted" -> "1.0", "gender" -> "UNKNOWN") -> -0.3677247801253174,
+          Map("predicted" -> "1.0", "gender" -> "MALE") -> 0.47957308026188605,
+          Map("predicted" -> "0.0", "gender" -> "MALE") -> 0.1431008436406731,
+          Map("predicted" -> "0.0", "gender" -> "FEMALE") -> 0.1431008436406731,
+          Map("predicted" -> "1.0", "gender" -> "FEMALE") -> -0.3677247801253174,
+          Map("predicted" -> "0.0", "gender" -> "UNKNOWN") -> -0.3677247801253174)),
       FairnessResult(
         resultType = "SKEWS: THEIL_L_INDEX",
-        resultValOpt = Some(0.10948572991373717),
+        resultValOpt = Some(0.10437214313750444),
         constituentVals = Map()),
       FairnessResult(
         resultType = "SKEWS: THEIL_T_INDEX",
-        resultValOpt = Some(0.10611973507347487),
+        resultValOpt = Some(0.08957922977452398),
         constituentVals = Map())))
   }
 

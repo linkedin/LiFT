@@ -4,7 +4,7 @@ import com.linkedin.lift.lib.{DivergenceUtils, PermutationTestUtils, StatsUtils}
 import com.linkedin.lift.types.{BenefitMap, Distribution, FairnessResult, ModelPrediction}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.IntegerType
-import org.apache.spark.sql.{DataFrame, DataFrameReader, SaveMode, SparkSession}
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 
 /**
   * Utilities that stitch together various fairness metrics methods,
@@ -99,7 +99,7 @@ object FairnessMetricsUtils {
     * Join the input DataFrame with the protectedAttribute DataFrame, and return
     * the input DataFrame appended with the protectedAttribute.
     *
-    * @param dfReader The DataFrameReader to be used
+    * @param protectedDF DataFrame containing the protected attribute data
     * @param df The input DataFrame
     * @param uidField The unique ID field, such as memberId
     * @param protectedDatasetPath Path to the protected dataset. If empty, we
@@ -111,11 +111,9 @@ object FairnessMetricsUtils {
     *                                protectedAttribute DataFrame
     * @return The joined DataFrame
     */
-  def computeJoinedDF(dfReader: DataFrameReader, df: DataFrame, uidField: String,
+  def computeJoinedDF(protectedDF: DataFrame, df: DataFrame, uidField: String,
     protectedDatasetPath: String, uidProtectedAttributeField: String,
     protectedAttributeField: String): DataFrame = {
-    val protectedDF = dfReader
-      .load(protectedDatasetPath)
     protectedDF.select(col(uidProtectedAttributeField).as(uidField),
       col(protectedAttributeField))
       .join(df, uidField)
@@ -318,8 +316,7 @@ object FairnessMetricsUtils {
       Set(args.labelField, args.protectedAttributeField))
 
     // Passing in the appropriate parameters to this API returns the fairness metrics
-    val fairnessMetrics = FairnessMetricsUtils.computeDatasetMetrics(
-      distribution, referenceDistrOpt, args)
+    val fairnessMetrics = computeDatasetMetrics(distribution, referenceDistrOpt, args)
 
     // The above fairness metrics can be written out to HDFS
     writeFairnessResults(df.sparkSession, args.dataFormat, args.dataOptions,
@@ -337,8 +334,7 @@ object FairnessMetricsUtils {
     referenceDistrOpt: Option[Distribution],
     args: MeasureModelFairnessMetricsCmdLineArgs): Unit = {
     // Passing in the appropriate parameters to this API returns the fairness metrics
-    val fairnessMetrics = FairnessMetricsUtils.computeModelMetrics(df,
-      referenceDistrOpt, args)
+    val fairnessMetrics = computeModelMetrics(df, referenceDistrOpt, args)
 
     // The above fairness metrics can be written out to HDFS
     writeFairnessResults(df.sparkSession, args.dataFormat, args.dataOptions,
