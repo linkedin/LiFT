@@ -22,15 +22,16 @@ object MeasureModelFairnessMetrics {
       .getOrCreate()
 
     val args = MeasureModelFairnessMetricsCmdLineArgs.parseArgs(progArgs)
-    val dfReader = spark.read.format(args.dataFormat).options(args.dataOptions)
 
     // One could choose to do their own preprocessing here
     // For example, filtering out only certain records based on some threshold
+    val dfReader = spark.read.format(args.dataFormat).options(args.dataOptions)
     val df = FairnessMetricsUtils.projectIdLabelsAndScores(dfReader.load(args.datasetPath),
       args.uidField, args.labelField, args.scoreField, args.groupIdField)
+    val protectedDF = dfReader.load(args.protectedDatasetPath)
 
     // Similar preprocessing can be done with the protected attribute data
-    val joinedDF = FairnessMetricsUtils.computeJoinedDF(dfReader, df, args.uidField,
+    val joinedDF = FairnessMetricsUtils.computeJoinedDF(protectedDF, df, args.uidField,
       args.protectedDatasetPath, args.uidProtectedAttributeField,
       args.protectedAttributeField)
     joinedDF.persist

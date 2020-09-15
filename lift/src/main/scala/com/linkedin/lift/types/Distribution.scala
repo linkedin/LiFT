@@ -76,7 +76,7 @@ case class Distribution(
       }
       .groupBy(_._1)
       .map { case (marginalDimensions, countsGroup) =>
-        (marginalDimensions, countsGroup.map{_._2}.sum)}
+        (marginalDimensions, countsGroup.map(_._2).sum)}
 
     Distribution(entries = marginalDistributionEntries)
   }
