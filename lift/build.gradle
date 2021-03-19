@@ -21,6 +21,7 @@ dependencies {
   compile("com.github.scopt:scopt_" + scalaVersionShort + ":3.5.0")
   compile("org.apache.spark:spark-core_" + scalaVersionShort + ":" + sparkVersion)
   compile("org.apache.spark:spark-sql_" + scalaVersionShort + ":" + sparkVersion)
+  compile("org.apache.spark:spark-mllib_" + scalaVersionShort + ":" + sparkVersion)
   compile("org.scalatest:scalatest_" + scalaVersionShort + ":3.1.0")
   compile("org.testng:testng:6.8.8")
 }

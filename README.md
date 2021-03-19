@@ -3,14 +3,17 @@
 [![Download](https://api.bintray.com/packages/linkedin/maven/LiFT/images/download.svg)](https://bintray.com/linkedin/maven/LiFT/_latestVersion)
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](LICENSE)
 
-The LinkedIn Fairness Toolkit (LiFT) is a Scala/Spark library that enables the measurement of fairness in large scale machine learning workflows.
-The library can be deployed in training and scoring workflows to measure biases in training data, evaluate fairness
-metrics for ML models, and detect statistically significant differences in their performance across different
-subgroups. It can also be used for ad-hoc fairness analysis.
+The LinkedIn Fairness Toolkit (LiFT) is a Scala/Spark library that enables the measurement of fairness and the mitigation of bias in large-scale machine learning workflows.
+The measurement module includes measuring biases in training data, evaluating fairness
+metrics for ML models, and detecting statistically significant differences in their performance across different
+subgroups. It can also be used for ad-hoc fairness analysis. The mitigation part includes a post-processing method for transforming
+model scores to ensure the so-called equality of opportunity for rankings (in the presence/absence of position bias). This method can be directly applied to the model-generated scores without changing the existing model training pipeline.
 
 This library was created by [Sriram Vasudevan](https://www.linkedin.com/in/vasudevansriram/) and
 [Krishnaram Kenthapadi](https://www.linkedin.com/in/krishnaramkenthapadi/) (work done while at LinkedIn).
 
+Additional Contributors:
+1. [Preetam Nandy](https://www.linkedin.com/in/preetamnandy/)
 
 ## Copyright
 
@@ -38,6 +41,7 @@ on scored dataset samples that can be collected to the driver.
 The LinkedIn Fairness Toolkit (LiFT) provides the following capabilities:
 1. [Measuring Fairness Metrics on Training Data](dataset-fairness.md)
 2. [Measuring Fairness Metrics for Model Performance](model-fairness.md)
+3. [Achieving Equality of Opportunity](equality-of-opportunity.md)
 
 As part of the model performance metrics, it also contains the implementation of a new permutation testing framework
 that detects statistically significant differences in model performance (as measured by an arbitrary performance metric) across different subgroups.
@@ -231,6 +235,13 @@ format in the input data and the `protectedAttribute` data. This might not
 be the case for your dataset, in which case you can always create your own
 Spark job similar to the provided example (described below)
 
+#### Learning and Applying Equality of Opportunity (EOpp) on Local Datasets
+An example is provided in [EOppUtilsTest](lift/src/Test/scala/com/linkedin/lift/mitigation/EOppUtilsTest.scala) for applying the EOpp transformation to local datasets. We provide two simulated datasets [TrainingData.csv](lift/src/Test/Data/TrainingData.csv) and [ValidationData.csv]((lift/src/Test/Data/ValidationData.csv)) each containing 1M samples. The workflow is provided as a test function <code>eOppTransformationTest()</code> consisting of the following steps:
+1. Learning position bias corrected EOpp transformation using the training data
+2. Applying the EOpp transformation on the validation data
+3. Checking EOpp in the transformed validation data with position bias
+4. Checking the (optional) score distribution preserving property of the EOpp transformation
+
 #### Custom Spark jobs built on LiFT
 If you are implementing your own driver program to measure dataset metrics,
 here's how you can make use of LiFT:
@@ -352,3 +363,16 @@ you can use the following citation:
     numpages     = {11}
 }
 ```
+
+If you publish material that references the equality of opportunity methodology that is available as part of LiFT,
+you can use the following citation:
+```
+@misc{nandy21mitigation,
+   author        = {Preetam Nandy and Cyrus Diciccio and Divya Venugopalan and Heloise Logan and Kinjal Basu and Noureddine El Karoui},
+   title         = {Achieving Fairness via Post-Processing in Web-Scale Recommender Systems}, 
+   year          = {2021},
+   eprint        = {2006.11350},
+   archivePrefix = {arXiv}
+}
+```
+
