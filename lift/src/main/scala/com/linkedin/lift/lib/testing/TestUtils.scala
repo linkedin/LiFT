@@ -1,7 +1,11 @@
 package com.linkedin.lift.lib.testing
 
+import com.linkedin.lift.types.{ScoreWithAttribute, ScoreWithLabelAndAttribute}
 import org.apache.spark.SparkConf
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.expressions.Window
+import org.apache.spark.sql.functions.rank
+import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
@@ -51,5 +55,39 @@ object TestUtils {
       .master(s"local[$numThreads]")
       .config(sparkConf)
       .getOrCreate()
+  }
+
+  /**
+    * Loading csv data
+    */
+  def loadCsvData(spark: SparkSession, dataPath: String, dataSchema: StructType, delimiter: String,
+    numPartitions: Int = 100): DataFrame ={
+    spark.read.format("csv")
+      .option("header", value = true)
+      .option("delimiter", delimiter)
+      .option("numPartitions", numPartitions)
+      .schema(dataSchema)
+      .load(dataPath)
+  }
+
+  case class DataWithPositionBias(itemId: Int, sessionId: Int, score: Double, position: Int, label: Int,
+    attribute: String)
+
+  /**
+    * To apply the effect of position bias (i.e. positive response decay), we multiply the labels with
+    * Bernoulli(1/(1 + position)) random numbers,
+    * where the position corresponds to the rank of an item in a session (according to item scores).
+    *
+    * @param spark sparksession
+    * @param dataWithoutPositionBias a dataset containing sessionId, score, position and label
+    * @return dataset with modified labels
+    */
+  def applyPositionBias(spark: SparkSession, dataWithoutPositionBias: Dataset[ScoreWithLabelAndAttribute]):
+  Dataset[ScoreWithLabelAndAttribute] = {
+    import spark.implicits._
+    dataWithoutPositionBias
+      .withColumn("position", rank().over(Window.partitionBy($"sessionId").orderBy($"score".desc)))
+      .as[ScoreWithLabelAndAttribute]
+      .map(row => row.copy(label = if (math.random < 1 / math.log(1 + row.position.get) & row.label == 1) 1 else 0))
   }
 }
