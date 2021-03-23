@@ -21,37 +21,24 @@ object PositionBiasUtils {
     val numSamples = data.count
     val mean = data.sum / numSamples
     val stdDev = Math.sqrt((data.map(t => t * t).sum / numSamples) - mean * mean)
-    return 1.06 * stdDev * math.pow(numSamples, -0.2)
+    1.06 * stdDev * math.pow(numSamples, -0.2)
   }
 
   /**
-    * Kernel density estimation with a Gaussian kernel
+    * Kernel density estimation with a Gaussian kernel for scores corresponding to a given position
     *
-    * @param data i.i.d. samples
-    * @return a probability density function
-    */
-  def getDensity(data: RDD[Double]): KernelDensity = {
-    val bw = getBandwidth(data)
-    val density = new KernelDensity()
-      .setSample(data)
-      .setBandwidth(bw)
-    return density
-  }
-
-  /**
-    * Extracting score corresponding to a given position from a Dataset
-    *
-    * @param spark    spark session
     * @param data     dataset containing score, binary label/response, position
     * @param position position value for filtering
-    *                 return score RDD
+    * @return a probability density function
     */
-  def extractScore(spark: SparkSession, data: Dataset[ScoreWithLabelAndPosition], position: Int): RDD[Double] = {
-    import spark.implicits._
-    return data
-      .filter($"position" === position)
-      .map(r => r.score)
-      .rdd
+  def getDensity(data: Dataset[ScoreWithLabelAndPosition], position: Int): KernelDensity = {
+    import data.sparkSession.implicits._
+    val scores = data.filter(_.position == position).map(_.score).rdd
+    val bw = getBandwidth(scores)
+    val density = new KernelDensity()
+      .setSample(scores)
+      .setBandwidth(bw)
+    density
   }
 
   /**
@@ -62,22 +49,21 @@ object PositionBiasUtils {
     * We correct for this discrepancy by matching the score distribution at the target position with
     * the score distribution at the base position via importance sampling.
     *
-    * @param spark               spark session
     * @param data                dataset containing score, binary label {0, 1}, position
     * @param maxImportanceWeight to control the variance of an importance sampling estimator
     * @param targetPosition      target position for position bias estimation
     * @param basePosition        base position for position bias estimation
     * @return estimated position bias
     */
-  def estimateAdjacentPositionBias(spark: SparkSession, data: Dataset[ScoreWithLabelAndPosition],
+  def estimateAdjacentPositionBias(data: Dataset[ScoreWithLabelAndPosition],
     maxImportanceWeight: Double, targetPosition: Int, basePosition: Int): Double = {
-    import spark.implicits._
+    import data.sparkSession.implicits._
 
     // estimating the density of the scores at basePosition
-    val kdTargetPosition = getDensity(extractScore(spark, data, targetPosition))
+    val kdTargetPosition = getDensity(data, targetPosition)
 
     // estimating the density of the scores at basePosition
-    val kdPreviousPosition = getDensity(extractScore(spark, data, basePosition))
+    val kdPreviousPosition = getDensity(data, basePosition)
 
     // extracting scores corresponding to positive labels at targetPosition
     val targetPositionPositiveScoresArray = data
@@ -94,7 +80,7 @@ object PositionBiasUtils {
       .filter($"label" === 1 and $"position" === basePosition)
       .count
 
-    return totalWeight / basePositionPositiveScoresCount
+    totalWeight / basePositionPositiveScoresCount
   }
 
   /**
@@ -104,19 +90,18 @@ object PositionBiasUtils {
     * from the previous position to the target position after adjusting for
     * the discrepancy in the score distributions with importance sampling (see above).
     *
-    * @param spark                        spark session
     * @param data                         dataset containing score, binary label {0, 1}, position
     * @param maxImportanceWeight          to control the variance of an importance sampling estimator
     *                                     for the adjacent position bias estimations
     * @param positionBiasEstimationCutOff all adjacent position biases will be set to one beyond this cutoff
     * @return position bias estimates for all positions
     */
-  def estimatePositionBias(spark: SparkSession, data: Dataset[ScoreWithLabelAndPosition],
+  def estimatePositionBias(data: Dataset[ScoreWithLabelAndPosition],
     maxImportanceWeight: Double, positionBiasEstimationCutOff: Int): Seq[PositionBias] = {
-    import spark.implicits._
-    val positions = data.select($"position").distinct.map(r => r.getInt(0)).collect().toList.sorted
+    import data.sparkSession.implicits._
+    val positions = data.map(_.position).distinct.collect.toSeq.sorted
     val adjacentPositionBias = (1 until math.min(positions.size, positionBiasEstimationCutOff)).map(i =>
-      estimateAdjacentPositionBias(spark,
+      estimateAdjacentPositionBias(
         data.filter($"position" === positions(i) or $"position" === positions(i - 1)),
         maxImportanceWeight, positions(i), positions(i - 1)))
     var estimate = Seq(PositionBias(positions.head, 1.0))
@@ -128,14 +113,18 @@ object PositionBiasUtils {
         estimate :+= PositionBias(positions(i), estimate.last.positionBias)
       }
     }
-    return estimate
+    estimate
   }
 
   /**
     * Resampling data with weights corresponds to the inverse position bias for removing effect of position bias
-    * from the data with positive labels
+    * from the data with positive labels.
+    * We first compute normalized weights from the position bias estimates.
+    * Note that the normalized weights are in [0, 1].
+    * This allows us to get a weighted sample by applying down-sampling with normalized weights as down-sample rate.
+    * We repeat the down-sampling with multiple copies of the original sample to improve
+    * the accuracy of the final weighted sample.
     *
-    * @param spark                        spark session
     * @param data                         dataset containing score, binary label {0, 1}, position
     * @param maxImportanceWeight          see estimatePositionBias()
     * @param positionBiasEstimationCutOff see estimatePositionBias()
@@ -148,22 +137,17 @@ object PositionBiasUtils {
     * @param seed                         for setting random seed for reproducibility
     * @return debiased dataset with positive labels
     */
-  def debiasPositiveLabelScores(spark: SparkSession, data: Dataset[ScoreWithLabelAndPosition],
+  def debiasPositiveLabelScores(data: Dataset[ScoreWithLabelAndPosition],
     maxImportanceWeight: Double = 1000, positionBiasEstimationCutOff: Int, repeatTimes: Int = 1000,
     inflationRate: Double = 10, numPartitions: Int = 1000, seed: Long = scala.util.Random.nextLong()):
   Dataset[ScoreWithLabelAndPosition] = {
-    import spark.implicits._
-    // We first compute normalized weights from the position bias estimates.
-    // Note that the normalized weights are in [0, 1].
-    // This allows us to get a weighted sample by applying down-sampling with normalized weights as down-sample rate.
-    // We repeat the down-sampling with multiple copies of the original sample to improve
-    // the accuracy of the final weighted sample.
+    import data.sparkSession.implicits._
 
     if (positionBiasEstimationCutOff < 1) {
       return data.filter($"label" === 1)
     }
 
-    val positionBiasEstimates = estimatePositionBias(spark, data, maxImportanceWeight, positionBiasEstimationCutOff)
+    val positionBiasEstimates = estimatePositionBias(data, maxImportanceWeight, positionBiasEstimationCutOff)
       .toDF
 
     val dataWithWeight = data
@@ -183,9 +167,9 @@ object PositionBiasUtils {
 
     val downSampleRate = inflationRate * data.count().toFloat / repeatedSamples.count()
     if (downSampleRate < 1) {
-      return repeatedSamples.sample(downSampleRate)
+      repeatedSamples.sample(downSampleRate)
     } else {
-      return repeatedSamples
+      repeatedSamples
     }
   }
 }

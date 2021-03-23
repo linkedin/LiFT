@@ -59,6 +59,13 @@ object TestUtils {
 
   /**
     * Loading csv data
+    *
+    * @param spark spark session
+    * @param dataPath data path
+    * @param dataSchema data schema
+    * @param delimiter data separating delimiter
+    * @param numPartitions number of partitions
+    * @return loaded data as a dataframe
     */
   def loadCsvData(spark: SparkSession, dataPath: String, dataSchema: StructType, delimiter: String,
     numPartitions: Int = 100): DataFrame ={
@@ -78,16 +85,16 @@ object TestUtils {
     * Bernoulli(1/(1 + position)) random numbers,
     * where the position corresponds to the rank of an item in a session (according to item scores).
     *
-    * @param spark sparksession
     * @param dataWithoutPositionBias a dataset containing sessionId, score, position and label
     * @return dataset with modified labels
     */
-  def applyPositionBias(spark: SparkSession, dataWithoutPositionBias: Dataset[ScoreWithLabelAndAttribute]):
+  def applyPositionBias(dataWithoutPositionBias: Dataset[ScoreWithLabelAndAttribute]):
   Dataset[ScoreWithLabelAndAttribute] = {
-    import spark.implicits._
+    import dataWithoutPositionBias.sparkSession.implicits._
     dataWithoutPositionBias
       .withColumn("position", rank().over(Window.partitionBy($"sessionId").orderBy($"score".desc)))
       .as[ScoreWithLabelAndAttribute]
-      .map(row => row.copy(label = if (math.random < 1 / math.log(1 + row.position.get) & row.label == 1) 1 else 0))
+      .map(row => row.copy(label = if (math.random < 1 / math.log(1 + row.position.getOrElse(1)) &&
+        row.label == 1) 1 else 0))
   }
 }

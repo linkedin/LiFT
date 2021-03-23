@@ -56,7 +56,7 @@ class EOppUtilsTest {
       ScoreWithAttribute(6, 6.0, attributeList(0)),
       ScoreWithAttribute(7, 6.0, attributeList(1))).toDS
 
-    val transformedData = applyTransformation(spark, data, attributeList, transformations)
+    val transformedData = applyTransformation(data, attributeList, transformations)
 
     val expectedOutput = List(
       ScoreWithAttribute(0, 2.0, attributeList(0)),
@@ -70,7 +70,6 @@ class EOppUtilsTest {
 
     transformedData.collect() should contain theSameElementsAs expectedOutput.collect
   }
-
 
   @Test(description = "Computing the empirical CDF function")
   def cdfTransformationTest(): Unit = {
@@ -89,7 +88,6 @@ class EOppUtilsTest {
     Assert.assertEquals(transformScore(1.0, sortedKeys, cdf), 1.0, 0.01)
   }
 
-
   @Test()
   def adjustScaleTest(): Unit = {
     import spark.implicits._
@@ -107,41 +105,20 @@ class EOppUtilsTest {
       ScoreWithAttribute(4, 3.0, attributeList(0)),
       ScoreWithAttribute(5, 3.0, attributeList(1))).toDS
 
-    val adjustedTransformation = adjustScale(spark, data, attributeList, transformations, 3,
+    val adjustedTransformation = adjustScale(data, attributeList, transformations, 3,
       1e-6)
 
-    val transformedData = applyTransformation(spark, data, attributeList, adjustedTransformation)
+    val transformedData = applyTransformation(data, attributeList, adjustedTransformation)
 
     transformedData.collect() should contain theSameElementsAs data.collect
   }
 
-  // @Test
-  def temp(): Unit = {
-    import spark.implicits._
-
-    val dataSchema = StructType(Array(
-      StructField("itemId", IntegerType),
-      StructField("sessionId", IntegerType),
-      StructField("score", DoubleType),
-      StructField("label", IntegerType),
-      StructField("attribute", StringType)))
-
-    loadCsvData(spark,
-      "src/test/data/TrainingDataWithoutPositionBias.csv", dataSchema, ",")
-      .filter($"sessionId" <= 20000)
-      .coalesce(1)
-      .write
-      .option("header", "true")
-      .csv("src/test/data/TrainingData")
-  }
-
-  // @Test() // the test takes around 7-10 minutes to run
+  //@Test() // it takes around 2-5 minutes to run
   def eOppTransformationTest(): Unit = {
     // Training data and validation data are generated using the models described in the simulation section of
     // https://arxiv.org/abs/2006.11350. Each dataset contains 1 million rows
     // (20k sessions with 50 randomly selected items from a population of 50k items) and 5 columns
-    // (itemId, sessionId, score, label, attribute).
-    //
+    // (itemId, sessionId, score, label, attribute). Please see equality-of-opportunity.md for further details
 
     import spark.implicits._
 
@@ -160,16 +137,16 @@ class EOppUtilsTest {
       "src/test/data/TrainingData.csv", dataSchema, ",")
       .as[ScoreWithLabelAndAttribute]
 
-    val trainingData = applyPositionBias(spark, trainingDataWithoutPositionBias)
+    val trainingData = applyPositionBias(trainingDataWithoutPositionBias)
     trainingData.persist
 
     // Step 1: Learning position bias corrected EOpp transformation using the training data
-    val debiasedTrainingData = debiasPositiveLabelScores(spark, positionBiasEstimationCutOff = 20,
+    val debiasedTrainingData = debiasPositiveLabelScores(positionBiasEstimationCutOff = 20,
       data = trainingData.as[ScoreWithLabelAndPosition], repeatTimes = 10, inflationRate = 10,
       numPartitions = 10, seed = 123)
 
-    val transformations = eOppTransformation(spark, debiasedTrainingData.as[ScoreWithLabelAndAttribute],
-      attributeList, numQuantiles = 10000, relativeTolerance = 1e-4, true)
+    val transformations = eOppTransformation(debiasedTrainingData.as[ScoreWithLabelAndAttribute],
+      attributeList, numQuantiles = 1000, relativeTolerance = 1e-4, true)
 
     // Step 2: Applying the EOpp transformation on the validation data
     val validationDataWithoutPositionBias = loadCsvData(spark,
@@ -179,7 +156,7 @@ class EOppUtilsTest {
     val validationDataWithoutLabel = validationDataWithoutPositionBias
       .drop("label").as[ScoreWithAttribute]
 
-    val transformedValidationData = applyTransformation(spark, validationDataWithoutLabel, attributeList,
+    val transformedValidationData = applyTransformation(validationDataWithoutLabel, attributeList,
       transformations, 10)
 
     val joinedData = transformedValidationData
@@ -187,11 +164,11 @@ class EOppUtilsTest {
         Seq("itemId", "sessionId"), "inner")
       .as[ScoreWithLabelAndAttribute]
 
-    val transformedValidationDataWithPositionBias = applyPositionBias(spark, joinedData)
+    val transformedValidationDataWithPositionBias = applyPositionBias(joinedData)
       .filter($"label" === 1)
 
     // Step 3: checking EOpp in the transformed validation data with position bias
-    val numQuantiles = 10000
+    val numQuantiles = 1000
     val relativeTolerance = 1e-4
     val probabilities = Array.range(0, numQuantiles + 1).map(x => x.toDouble / numQuantiles)
     val attribute0Quantiles = transformedValidationDataWithPositionBias.filter($"attribute" === "0")
@@ -202,7 +179,7 @@ class EOppUtilsTest {
     val wasserstein2DistanceEOpp = attribute0Quantiles.zip(attribute1Quantiles)
       .map(x => math.pow(x._1 - x._2, 2)).sum / numQuantiles
 
-    Assert.assertEquals(wasserstein2DistanceEOpp, 0, 0.01)
+    Assert.assertEquals(wasserstein2DistanceEOpp, 0, 0.05)
 
     // Step 4: checking if the transformed score distribution is the same as the score distribution before
     //transformation
@@ -215,8 +192,7 @@ class EOppUtilsTest {
     val wasserstein2DistanceRescaling = quantilesAfterTransformation.zip(quantilesBeforeTransformation)
       .map(x => math.pow(x._1 - x._2, 2)).sum / numQuantiles
 
-
-    Assert.assertEquals(wasserstein2DistanceRescaling, 0, 0.01)
+    Assert.assertEquals(wasserstein2DistanceRescaling, 0, 0.05)
 
   }
 }
