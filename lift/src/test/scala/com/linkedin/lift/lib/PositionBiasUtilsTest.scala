@@ -1,5 +1,6 @@
 package com.linkedin.lift.lib
 
+import com.linkedin.lift.lib.PositionBiasUtils._
 import com.linkedin.lift.lib.testing.TestUtils
 import com.linkedin.lift.lib.testing.TestValues.positionBiasData
 import org.apache.spark.mllib.random.RandomRDDs.normalRDD
@@ -17,20 +18,22 @@ class PositionBiasUtilsTest {
 
   @Test(description = "Bandwidth computation based on Silverman's rule")
   def getBandwidthTest(): Unit = {
-    val bw = PositionBiasUtils.getBandwidth(normalRDD(spark.sparkContext, 10000L, 1, seed = 123))
+    import spark.implicits._
+    val df = normalRDD(spark.sparkContext, 10000L, 1, seed = 123).toDF("value")
+    val bw = getBandwidth(df)
     Assert.assertEquals(bw, 1.06 * Math.pow(10000, -0.2), 0.01)
   }
 
   @Test(description = "Estimating the position bias at targetPosition with respect to basePosition")
   def estimateAdjacentPositionBiasTest(): Unit = {
-    val estimate = PositionBiasUtils.estimateAdjacentPositionBias(positionBiasData, 1e3,
+    val estimate = estimateAdjacentPositionBias(positionBiasData, 1e3,
       2, 1)
     Assert.assertEquals(estimate, 0.80, 0.01)
   }
 
   @Test(description = "Position bias Estimation with respect to the top most position")
   def estimatePositionBiasTest(): Unit = {
-    val estimate = PositionBiasUtils.estimatePositionBias(positionBiasData, 1e3,
+    val estimate = estimatePositionBias(positionBiasData, 1e3,
       3)
     Assert.assertEquals(estimate(1).positionBias, 0.80, 0.01)
     Assert.assertEquals(estimate(2).positionBias, 0.60, 0.01)

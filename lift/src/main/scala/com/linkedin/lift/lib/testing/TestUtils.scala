@@ -1,6 +1,6 @@
 package com.linkedin.lift.lib.testing
 
-import com.linkedin.lift.types.{ScoreWithAttribute, ScoreWithLabelAndAttribute}
+import com.linkedin.lift.types.ScoreWithLabelAndAttribute
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.rank
@@ -76,9 +76,6 @@ object TestUtils {
       .schema(dataSchema)
       .load(dataPath)
   }
-
-  case class DataWithPositionBias(itemId: Int, sessionId: Int, score: Double, position: Int, label: Int,
-    attribute: String)
 
   /**
     * To apply the effect of position bias (i.e. positive response decay), we multiply the labels with

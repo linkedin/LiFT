@@ -1,12 +1,13 @@
 package com.linkedin.lift.mitigation
 
 import com.linkedin.lift.types.{ScoreWithAttribute, ScoreWithLabelAndAttribute}
-import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset}
 
-
+/**
+  * Utilities for learning and applying an equality of opportunity transformation
+  * (based on https://arxiv.org/abs/2006.11350)
+  */
 object EOppUtils {
-
-
   /**
     * This is a helper function for applyTransformation() below.
     * Transforming a single score using a transformation function given as a scala map.

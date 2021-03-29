@@ -2,26 +2,26 @@ package com.linkedin.lift.lib
 
 import com.linkedin.lift.types.ScoreWithLabelAndPosition
 import org.apache.spark.mllib.stat.KernelDensity
-import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.expressions.Window
-import org.apache.spark.sql.functions.{broadcast, lit, min, rand}
-import org.apache.spark.sql.{Dataset, SparkSession}
+import org.apache.spark.sql.functions.{broadcast, count, lit, min, pow, rand, stddev_pop}
+import org.apache.spark.sql.{DataFrame, Dataset}
 
+/**
+  * Utilities for estimating position bias and removing the effect of position bias for learning
+  * an equality of opportunity transformation
+  */
 object PositionBiasUtils {
-
   case class PositionBias(position: Int, positionBias: Double)
-
   /**
     * Bandwidth computation based on Silverman's rule for kernel density estimation
     *
-    * @param data i.i.d. samples
+    * @param df a dataframe containing i.i.d. samples as "value"
     * @return bandwidth
     */
-  def getBandwidth(data: RDD[Double]): Double = {
-    val numSamples = data.count
-    val mean = data.sum / numSamples
-    val stdDev = Math.sqrt((data.map(t => t * t).sum / numSamples) - mean * mean)
-    1.06 * stdDev * math.pow(numSamples, -0.2)
+  def getBandwidth(df: DataFrame): Double = {
+    import df.sparkSession.implicits._
+    df.agg(count($"value").as("numSamples"), stddev_pop($"value").as("stdDev"))
+      .select(lit(1.06) * $"stdDev" * pow($"numSamples", lit(-0.2))).head.getDouble(0)
   }
 
   /**
@@ -33,10 +33,10 @@ object PositionBiasUtils {
     */
   def getDensity(data: Dataset[ScoreWithLabelAndPosition], position: Int): KernelDensity = {
     import data.sparkSession.implicits._
-    val scores = data.filter(_.position == position).map(_.score).rdd
-    val bw = getBandwidth(scores)
+    val scores = data.filter(_.position == position).map(_.score)
+    val bw = getBandwidth(scores.toDF("value"))
     val density = new KernelDensity()
-      .setSample(scores)
+      .setSample(scores.rdd)
       .setBandwidth(bw)
     density
   }
@@ -67,7 +67,7 @@ object PositionBiasUtils {
 
     // extracting scores corresponding to positive labels at targetPosition
     val targetPositionPositiveScoresArray = data
-      .filter($"label" === 1 and $"position" === targetPosition)
+      .filter(r => r.label == 1 && r.position == targetPosition)
       .map(r => r.score).collect
 
     // estimating the positive label probability at targetPosition with importance sampling adjustment
@@ -77,7 +77,7 @@ object PositionBiasUtils {
 
     // estimating the positive label probability at basePosition
     val basePositionPositiveScoresCount = data
-      .filter($"label" === 1 and $"position" === basePosition)
+      .filter(r => r.label == 1 && r.position == basePosition)
       .count
 
     totalWeight / basePositionPositiveScoresCount
@@ -144,22 +144,21 @@ object PositionBiasUtils {
     import data.sparkSession.implicits._
 
     if (positionBiasEstimationCutOff < 1) {
-      return data.filter($"label" === 1)
+      return data.filter(_.label == 1)
     }
 
     val positionBiasEstimates = estimatePositionBias(data, maxImportanceWeight, positionBiasEstimationCutOff)
       .toDF
 
     val dataWithWeight = data
-      .filter($"label" === 1)
+      .filter(_.label == 1)
       .repartition(numPartitions, $"position")
       .join(broadcast(positionBiasEstimates), Seq("position"), "left_outer")
       .withColumn("minPositionBias", min($"positionBias").over(Window.partitionBy(lit(1))))
       .withColumn("weight", $"minPositionBias" / $"positionBias")
 
     val repeatedSamples = Seq.range(0, repeatTimes)
-      .map(i => dataWithWeight.withColumn("randUnif", rand(seed * i))
-        .filter($"randUnif" <= $"weight").drop("randUnif", "weight"))
+      .map(i => dataWithWeight.filter(rand(seed * i) <= $"weight").drop("weight"))
       .reduceOption(_ union _).getOrElse(throw new RuntimeException("Cannot create union data"))
       .as[ScoreWithLabelAndPosition]
 
