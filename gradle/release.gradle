@@ -68,53 +68,11 @@ nexusPublishing {
 }
 
 //////////////////////////////////
-// LinkedIn Artifactory Config
-//////////////////////////////////
-
-apply plugin: "maven-publish" // https://docs.gradle.org/current/userguide/publishing_maven.html
-apply plugin: "com.jfrog.artifactory" //https://www.jfrog.com/confluence/display/rtf/gradle+artifactory+plugin
-artifactory {
-  contextUrl = 'https://linkedin.jfrog.io/artifactory'
-  publish {
-    repository {
-      repoKey = 'LiFT'
-      username = System.getenv('ARTIFACTORY_USER')
-      password = System.getenv('ARTIFACTORY_KEY')
-      maven = true
-    }
-
-    defaults {
-      publications('liftJar')
-      publishBuildInfo = true
-      publishArtifacts = true
-      publishPom = true
-      publishIvy = true
-    }
-  }
-  clientConfig.setIncludeEnvVars(false)
-}
-
-//////////////////////////////////
 // Additional Release Tasks
 //////////////////////////////////
 
-artifactoryPublish {
-  skip = project.hasProperty('artifactory.dryRun')
-}
-
 task artifactoryPublishAll {
   description = "Runs 'artifactoryPublish' tasks from all projects"
-  mustRunAfter "githubRelease" // github release is easier to rollback so we run it first
-}
-
-tasks.named("closeAndReleaseStagingRepository") {
-  mustRunAfter "publishToSonatype"
-}
-
-task mavenCentralPublish {
-  description = "Publishes to Maven Central"
-  mustRunAfter "artifactoryPublishAll"
-  dependsOn "publishToSonatype", "closeAndReleaseStagingRepository"
 }
 
 allprojects {
@@ -122,9 +80,4 @@ allprojects {
     it.dependsOn verifyArtifactoryProperties
     artifactoryPublishAll.dependsOn it
   }
-}
-
-task ciPerformRelease {
-  description = "Performs the release, intended to be ran on CI"
-  dependsOn "githubRelease", "artifactoryPublishAll", "mavenCentralPublish"
 }

@@ -41,20 +41,17 @@ jobs:
         with:
           java-version: 1.8
       - name: Build and test code, and test artifact publishing
+        run: ./gradlew build publishToMavenLocal artifactoryPublishAll -s -Partifactory.dryRun -PscalaVersion=$SCALA_VERSION -PsparkVersion=$SPARK_VERSION
         env:
           SCALA_VERSION: ${{ matrix.scala-version }}
           SPARK_VERSION: ${{ matrix.spark-version }}
-          ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
-          ARTIFACTORY_KEY: ${{ secrets.ARTIFACTORY_KEY }}          
-        #run: ./gradlew build publishToMavenLocal artifactoryPublish -s -Partifactory.dryRun -PscalaVersion=$SCALA_VERSION -PsparkVersion=$SPARK_VERSION
-        run: ./gradlew build publishToMavenLocal -s -PscalaVersion=$SCALA_VERSION -PsparkVersion=$SPARK_VERSION
-      - name: Release
+      - name: Release to Maven Central and LinkedIn Artifactory
         # Release job, only for pushes to the main development branch
         if: github.event_name == 'push'
           && github.ref == 'refs/heads/main'
           && github.repository == 'linkedin/LiFT'
           && !contains(toJSON(github.event.commits.*.message), '[skip release]')
-        run: ./gradlew publishToSonatype closeAndReleaseStagingRepository -s -PscalaVersion=$SCALA_VERSION -PsparkVersion=$SPARK_VERSION
+        run: ./gradlew publishToSonatype closeAndReleaseStagingRepository artifactoryPublishAll -s -PscalaVersion=$SCALA_VERSION -PsparkVersion=$SPARK_VERSION
         env:
           SCALA_VERSION: ${{ matrix.scala-version }}
           SPARK_VERSION: ${{ matrix.spark-version }}

@@ -84,3 +84,33 @@ signing {
     sign publishing.publications.liftJar
   }
 }
+
+//////////////////////////////////
+// LinkedIn Artifactory Config
+//////////////////////////////////
+
+apply plugin: "com.jfrog.artifactory" //https://www.jfrog.com/confluence/display/rtf/gradle+artifactory+plugin
+artifactory {
+  contextUrl = 'https://linkedin.jfrog.io/artifactory'
+  publish {
+    repository {
+      repoKey = 'LiFT'
+      username = System.getenv('ARTIFACTORY_USER')
+      password = System.getenv('ARTIFACTORY_KEY')
+      maven = true
+    }
+
+    defaults {
+      publications('liftJar')
+      publishBuildInfo = true
+      publishArtifacts = true
+      publishPom = true
+      publishIvy = true
+    }
+  }
+  clientConfig.setIncludeEnvVars(false)
+}
+
+artifactoryPublish {
+  skip = project.hasProperty('artifactory.dryRun')
+}
