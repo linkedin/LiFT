@@ -81,6 +81,11 @@ Tests typically run with the `test` task. If you want to force-run all tests, yo
 ./gradlew cleanTest test --no-build-cache
 ```
 
+To force rebuild the library, you can use:
+```bash
+./gradlew clean build --no-build-cache
+```
+
 
 ### Add a LiFT Dependency to Your Project
 

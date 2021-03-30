@@ -1,0 +1,83 @@
+//Plugin jars are added to the buildscript classpath in the root build.gradle file
+
+//////////////////////////////////
+// Token Verification Tasks
+//////////////////////////////////
+
+task checkGitHubToken {
+  doFirst {
+    if (System.getenv("GITHUB_TOKEN") == null) {
+      throw new Exception("Environment variable GITHUB_TOKEN not set.");
+    }
+    println "Using repository " + System.getenv("GITHUB_REPOSITORY")
+  }
+}
+
+task verifyArtifactoryProperties {
+  doFirst {
+    if (!project.hasProperty('artifactory.dryRun')) {
+      if (System.getenv('ARTIFACTORY_USER') == null) {
+        throw new Exception("Environment variable ARTIFACTORY_USER not set.");
+      }
+      if (System.getenv('ARTIFACTORY_KEY') == null) {
+        throw new Exception("Environment variable ARTIFACTORY_KEY not set.");
+      }
+    }
+  }
+}
+
+//////////////////////////////////
+// Shipkit Tasks
+//////////////////////////////////
+
+apply plugin: "org.shipkit.shipkit-auto-version" //https://github.com/shipkit/shipkit-auto-version
+
+apply plugin: "org.shipkit.shipkit-changelog" //https://github.com/shipkit/shipkit-changelog
+tasks.named("generateChangelog") {
+  dependsOn checkGitHubToken
+  previousRevision = project.ext.'shipkit-auto-version.previous-tag'
+  githubToken = System.getenv("GITHUB_TOKEN")
+  repository = "linkedin/LiFT"
+}
+
+apply plugin: "org.shipkit.shipkit-github-release" //https://github.com/shipkit/shipkit-changelog
+tasks.named("githubRelease") {
+  def genTask = tasks.named("generateChangelog").get()
+  dependsOn genTask
+  dependsOn checkGitHubToken
+  repository = genTask.repository
+  changelog = genTask.outputFile
+  githubToken = System.getenv("GITHUB_TOKEN")
+  newTagRevision = System.getenv("GITHUB_SHA")
+}
+
+//////////////////////////////////
+// Maven Central Config
+//////////////////////////////////
+
+apply plugin: "io.github.gradle-nexus.publish-plugin" //https://github.com/gradle-nexus/publish-plugin/
+nexusPublishing {
+  repositories {
+    if (System.getenv("SONATYPE_PWD")) {
+      sonatype {
+        username = System.getenv("SONATYPE_USER")
+        password = System.getenv("SONATYPE_PWD")
+      }
+    }
+  }
+}
+
+//////////////////////////////////
+// Additional Release Tasks
+//////////////////////////////////
+
+task artifactoryPublishAll {
+  description = "Runs 'artifactoryPublish' tasks from all projects"
+}
+
+allprojects {
+  tasks.matching { it.name == "artifactoryPublish" }.all {
+    it.dependsOn verifyArtifactoryProperties
+    artifactoryPublishAll.dependsOn it
+  }
+}

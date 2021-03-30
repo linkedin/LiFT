@@ -5,24 +5,24 @@ plugins {
 }
 
 def scalaVersion = findProperty("scalaVersion") ?: "2.11.8"  // Scala 2.11.8 is the default Scala build version.
-println "Scala version: " + scalaVersion
+println "Scala version: $scalaVersion"
 // If scalaVersion == "2.11.8", then scalaVersionShort == "2.11".
-def scalaVersionShort = VersionNumber.parse(scalaVersion).getMajor() + "." + VersionNumber.parse(scalaVersion).getMinor()
+def scalaVersionShort = "${VersionNumber.parse(scalaVersion).getMajor()}.${VersionNumber.parse(scalaVersion).getMinor()}"
 
 def sparkVersion = findProperty("sparkVersion") ?: "2.3.0"  // Spark 2.3.0 is the default Spark build version.
-println "Spark version: " + sparkVersion
+println "Spark version: $sparkVersion"
 
 dependencies {
   if(VersionNumber.parse(sparkVersion) >= VersionNumber.parse("2.4.0")) {
-    compile("org.apache.spark:spark-avro_" + scalaVersionShort + ":" + sparkVersion)
+    compile("org.apache.spark:spark-avro_$scalaVersionShort:$sparkVersion")
   } else {
-    compile("com.databricks:spark-avro_" + scalaVersionShort + ":4.0.0")
+    compile("com.databricks:spark-avro_$scalaVersionShort:4.0.0")
   }
-  compile("com.github.scopt:scopt_" + scalaVersionShort + ":3.5.0")
-  compile("org.apache.spark:spark-core_" + scalaVersionShort + ":" + sparkVersion)
-  compile("org.apache.spark:spark-sql_" + scalaVersionShort + ":" + sparkVersion)
-  compile("org.apache.spark:spark-mllib_" + scalaVersionShort + ":" + sparkVersion)
-  compile("org.scalatest:scalatest_" + scalaVersionShort + ":3.1.0")
+  compile("com.github.scopt:scopt_$scalaVersionShort:3.5.0")
+  compile("org.apache.spark:spark-core_$scalaVersionShort:$sparkVersion")
+  compile("org.apache.spark:spark-sql_$scalaVersionShort:$sparkVersion")
+  compile("org.apache.spark:spark-mllib_$scalaVersionShort:$sparkVersion")
+  compile("org.scalatest:scalatest_$scalaVersionShort:3.1.0")
   compile("org.testng:testng:6.8.8")
 }
 
@@ -31,3 +31,5 @@ test {
 }
 
 archivesBaseName = "${project.name}_${sparkVersion}_${scalaVersionShort}"
+
+apply from: "$rootDir/gradle/java-publication.gradle"

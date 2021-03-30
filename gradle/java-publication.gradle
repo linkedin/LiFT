@@ -1,0 +1,116 @@
+assert plugins.hasPlugin(JavaPlugin)
+
+tasks.withType(Jar) {
+  from "$rootDir/LICENSE"
+  from "$rootDir/NOTICE"
+}
+
+// Auxiliary jar files required by Maven module publications
+task sourcesJar(type: Jar, dependsOn: classes) {
+  classifier 'sources'
+  from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+  classifier 'javadoc'
+  from javadoc.destinationDir
+}
+
+artifacts {
+  archives sourcesJar
+  archives javadocJar
+}
+
+apply plugin: "maven-publish" // https://docs.gradle.org/current/userguide/publishing_maven.html
+publishing {
+  publications {
+    liftJar(MavenPublication) {
+      from components.java
+      artifact sourcesJar
+      artifact javadocJar
+
+      artifactId = project.archivesBaseName
+
+      pom {
+        name = artifactId
+        description = "A Scala/Spark library that enables the measurement of fairness in large scale machine learning workflows."
+        url = "https://github.com/linkedin/LiFT"
+        licenses {
+          license {
+            name = 'BSD 2-CLAUSE'
+            url = 'https://github.com/linkedin/LiFT/blob/master/LICENSE'
+            distribution = 'repo'
+          }
+        }
+        developers {
+          [
+            'sriramvasudevan:Sriram Vasudevan'
+          ].each { devData ->
+            developer {
+              def devInfo = devData.split(':')
+              id = devInfo[0]
+              name = devInfo[1]
+              url = 'https://github.com/' + devInfo[0]
+              roles = ["Core developer"]
+            }
+          }
+        }
+        scm {
+          url = 'https://github.com/linkedin/LiFT.git'
+        }
+        issueManagement {
+          url = 'https://github.com/linkedin/LiFT/issues'
+          system = 'GitHub issues'
+        }
+        ciManagement {
+          url = 'https://travis-ci.com/linkedin/LiFT'
+          system = 'Travis CI'
+        }
+      }
+    }
+  }
+
+  //useful for testing - running "publish" will create artifacts/pom in a local dir
+  repositories { maven { url = "$rootProject.buildDir/repo" } }
+}
+
+//fleshes out problems with Maven pom generation when building
+tasks.build.dependsOn("publishLiftJarPublicationToMavenLocal")
+
+apply plugin: 'signing' //https://docs.gradle.org/current/userguide/signing_plugin.html
+signing {
+  if (System.getenv("PGP_KEY")) {
+    useInMemoryPgpKeys(System.getenv("PGP_KEY"), System.getenv("PGP_PWD"))
+    sign publishing.publications.liftJar
+  }
+}
+
+//////////////////////////////////
+// LinkedIn Artifactory Config
+//////////////////////////////////
+
+apply plugin: "com.jfrog.artifactory" //https://www.jfrog.com/confluence/display/rtf/gradle+artifactory+plugin
+artifactory {
+  contextUrl = 'https://linkedin.jfrog.io/artifactory'
+  publish {
+    repository {
+      repoKey = 'LiFT'
+      username = System.getenv('ARTIFACTORY_USER')
+      password = System.getenv('ARTIFACTORY_KEY')
+      maven = true
+    }
+
+    defaults {
+      publications('liftJar')
+      publishBuildInfo = true
+      publishArtifacts = true
+      publishPom = true
+      publishIvy = true
+    }
+  }
+  clientConfig.setIncludeEnvVars(false)
+}
+
+artifactoryPublish {
+  skip = project.hasProperty('artifactory.dryRun')
+}
