@@ -1,0 +1,130 @@
+//Plugin jars are added to the buildscript classpath in the root build.gradle file
+
+//////////////////////////////////
+// Token Verification Tasks
+//////////////////////////////////
+
+task checkGitHubToken {
+  doFirst {
+    if (System.getenv("GITHUB_TOKEN") == null) {
+      throw new Exception("Environment variable GITHUB_TOKEN not set.");
+    }
+    println "Using repository " + System.getenv("GITHUB_REPOSITORY")
+  }
+}
+
+task verifyArtifactoryProperties {
+  doFirst {
+    if (!project.hasProperty('artifactory.dryRun')) {
+      if (System.getenv('ARTIFACTORY_USER') == null) {
+        throw new Exception("Environment variable ARTIFACTORY_USER not set.");
+      }
+      if (System.getenv('ARTIFACTORY_KEY') == null) {
+        throw new Exception("Environment variable ARTIFACTORY_KEY not set.");
+      }
+    }
+  }
+}
+
+//////////////////////////////////
+// Shipkit Tasks
+//////////////////////////////////
+
+apply plugin: "org.shipkit.shipkit-auto-version" //https://github.com/shipkit/shipkit-auto-version
+
+apply plugin: "org.shipkit.shipkit-changelog" //https://github.com/shipkit/shipkit-changelog
+tasks.named("generateChangelog") {
+  dependsOn checkGitHubToken
+  previousRevision = project.ext.'shipkit-auto-version.previous-tag'
+  githubToken = System.getenv("GITHUB_TOKEN")
+  repository = "sriramvasudevan/LiFT"
+}
+
+apply plugin: "org.shipkit.shipkit-github-release" //https://github.com/shipkit/shipkit-changelog
+tasks.named("githubRelease") {
+  def genTask = tasks.named("generateChangelog").get()
+  dependsOn genTask
+  dependsOn checkGitHubToken
+  repository = genTask.repository
+  changelog = genTask.outputFile
+  githubToken = System.getenv("GITHUB_TOKEN")
+  newTagRevision = System.getenv("GITHUB_SHA")
+}
+
+//////////////////////////////////
+// Maven Central Config
+//////////////////////////////////
+
+apply plugin: "io.github.gradle-nexus.publish-plugin" //https://github.com/gradle-nexus/publish-plugin/
+nexusPublishing {
+  repositories {
+    if (System.getenv("SONATYPE_PWD")) {
+      sonatype {
+        username = System.getenv("SONATYPE_USER")
+        password = System.getenv("SONATYPE_PWD")
+      }
+    }
+  }
+}
+
+//////////////////////////////////
+// LinkedIn Artifactory Config
+//////////////////////////////////
+
+apply plugin: "maven-publish" // https://docs.gradle.org/current/userguide/publishing_maven.html
+apply plugin: "com.jfrog.artifactory" //https://www.jfrog.com/confluence/display/rtf/gradle+artifactory+plugin
+artifactory {
+  contextUrl = 'https://linkedin.jfrog.io/artifactory'
+  publish {
+    repository {
+      repoKey = 'LiFT'
+      username = System.getenv('ARTIFACTORY_USER')
+      password = System.getenv('ARTIFACTORY_KEY')
+      maven = true
+    }
+
+    defaults {
+      publications('liftJar')
+      publishBuildInfo = true
+      publishArtifacts = true
+      publishPom = true
+      publishIvy = true
+    }
+  }
+  clientConfig.setIncludeEnvVars(false)
+}
+
+//////////////////////////////////
+// Additional Release Tasks
+//////////////////////////////////
+
+artifactoryPublish {
+  skip = project.hasProperty('artifactory.dryRun')
+}
+
+task artifactoryPublishAll {
+  description = "Runs 'artifactoryPublish' tasks from all projects"
+  mustRunAfter "githubRelease" // github release is easier to rollback so we run it first
+}
+
+tasks.named("closeAndReleaseStagingRepository") {
+  mustRunAfter "publishToSonatype"
+}
+
+task mavenCentralPublish {
+  description = "Publishes to Maven Central"
+  mustRunAfter "artifactoryPublishAll"
+  dependsOn "publishToSonatype", "closeAndReleaseStagingRepository"
+}
+
+allprojects {
+  tasks.matching { it.name == "artifactoryPublish" }.all {
+    it.dependsOn verifyArtifactoryProperties
+    artifactoryPublishAll.dependsOn it
+  }
+}
+
+task ciPerformRelease {
+  description = "Performs the release, intended to be ran on CI"
+  dependsOn "githubRelease", "artifactoryPublishAll", "mavenCentralPublish"
+}
