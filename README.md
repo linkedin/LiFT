@@ -1,8 +1,14 @@
 # The LinkedIn Fairness Toolkit (LiFT)
-[![Build Status](https://travis-ci.com/linkedin/LiFT.svg?branch=main)](https://travis-ci.com/linkedin/LiFT)
-[![Download](https://api.bintray.com/packages/linkedin/maven/LiFT/images/download.svg)](https://bintray.com/linkedin/maven/LiFT/_latestVersion)
+[![Build Status](https://github.com/linkedin/LiFT/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/linkedin/LiFT/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush)
+[![Release](https://img.shields.io/github/v/release/linkedin/LiFT)](https://github.com/linkedin/LiFT/releases/)
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](LICENSE)
+---
+> 📣 We've moved from Bintray to [Artifactory](https://linkedin.jfrog.io/artifactory/LiFT/)!
+>
+> As of version [0.2.2](https://github.com/linkedin/LiFT/releases/tag/v0.2.2), we are only publishing versions
+> to LinkedIn's Artifactory instance rather than Bintray, which is approaching end of life.
 
+## Introduction
 The LinkedIn Fairness Toolkit (LiFT) is a Scala/Spark library that enables the measurement of fairness and the mitigation of bias in large-scale machine learning workflows.
 The measurement module includes measuring biases in training data, evaluating fairness
 metrics for ML models, and detecting statistically significant differences in their performance across different
