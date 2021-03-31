@@ -95,15 +95,18 @@ To force rebuild the library, you can use:
 
 ### Add a LiFT Dependency to Your Project
 
-Please check [Bintray](https://bintray.com/beta/#/linkedin/maven/LiFT) for the latest artifact versions.
+Please check [Artifactory](https://linkedin.jfrog.io/artifactory/LiFT/) for the latest artifact versions.
 
 #### Gradle Example
 
-The artifacts are available in JCenter, so you can specify the JCenter repository in the top-level build.gradle file.
+The artifacts are available in LinkedIn's Artifactory instance and in Maven Central, so you can specify either repository in the top-level build.gradle file.
 
 ```
 repositories {
-    jcenter()
+    mavenCentral()
+    maven {
+        url "https://linkedin.jfrog.io/artifactory/open-source/"
+    }
 }
 ```
 
