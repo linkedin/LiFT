@@ -156,10 +156,10 @@ the dataset of interest:
 3. dataFormat: Format of the input datasets. This is the parameter passed
               to the Spark reader's format method. Defaults to avro.
 4. dataOptions: A map of options to be used with Spark's reader (optional).
-5. uidField: The unique ID field, like a memberId field.
+5. uidField: The unique ID field, like a memberId field. It acts as the join key for the primary dataset.
 6. labelField: The label field
 7. protectedAttributeField: The protected attribute field
-8. uidProtectedAttributeField: The uid field for the protected attribute dataset
+8. uidProtectedAttributeField: The uid field (join key) for the protected attribute dataset
 9. outputPath: Output data path
 10. referenceDistribution: A reference distribution to compare against (optional).
                           Only accepted value currently is UNIFORM.
@@ -198,13 +198,13 @@ the dataset of interest:
 3. dataFormat: Format of the input datasets. This is the parameter passed
               to the Spark reader's format method. Defaults to avro.
 4. dataOptions: A map of options to be used with Spark's reader (optional).
-5. uidField The unique ID field, like a memberId field.
+5. uidField The unique ID field, like a memberId field. It acts as the join key for the primary dataset.
 6. labelField The label field
 7. scoreField The score field
 8. scoreType Whether the scores are raw scores or probabilities.
              Accepted values are RAW or PROB.
 9. protectedAttributeField The protected attribute field
-10. uidProtectedAttributeField The uid field for the protected attribute dataset
+10. uidProtectedAttributeField The uid field (join key) for the protected attribute dataset.
 11. groupIdField An optional field to be used for grouping, in case of ranking metrics
 12. outputPath Output data path
 13. referenceDistribution A reference distribution to compare against (optional).
