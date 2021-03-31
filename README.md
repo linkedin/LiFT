@@ -1,8 +1,14 @@
 # The LinkedIn Fairness Toolkit (LiFT)
-[![Build Status](https://travis-ci.com/linkedin/LiFT.svg?branch=main)](https://travis-ci.com/linkedin/LiFT)
-[![Download](https://api.bintray.com/packages/linkedin/maven/LiFT/images/download.svg)](https://bintray.com/linkedin/maven/LiFT/_latestVersion)
+[![Build Status](https://github.com/linkedin/LiFT/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/linkedin/LiFT/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush)
+[![Release](https://img.shields.io/github/v/release/linkedin/LiFT)](https://github.com/linkedin/LiFT/releases/)
 [![License](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](LICENSE)
+---
+> 📣 We've moved from Bintray to [Artifactory](https://linkedin.jfrog.io/artifactory/LiFT/)!
+>
+> As of version [0.2.2](https://github.com/linkedin/LiFT/releases/tag/v0.2.2), we are only publishing versions
+> to LinkedIn's Artifactory instance rather than Bintray, which is approaching end of life.
 
+## Introduction
 The LinkedIn Fairness Toolkit (LiFT) is a Scala/Spark library that enables the measurement of fairness and the mitigation of bias in large-scale machine learning workflows.
 The measurement module includes measuring biases in training data, evaluating fairness
 metrics for ML models, and detecting statistically significant differences in their performance across different
@@ -89,15 +95,18 @@ To force rebuild the library, you can use:
 
 ### Add a LiFT Dependency to Your Project
 
-Please check [Bintray](https://bintray.com/beta/#/linkedin/maven/LiFT) for the latest artifact versions.
+Please check [Artifactory](https://linkedin.jfrog.io/artifactory/LiFT/) for the latest artifact versions.
 
 #### Gradle Example
 
-The artifacts are available in JCenter, so you can specify the JCenter repository in the top-level build.gradle file.
+The artifacts are available in LinkedIn's Artifactory instance and in Maven Central, so you can specify either repository in the top-level build.gradle file.
 
 ```
 repositories {
-    jcenter()
+    mavenCentral()
+    maven {
+        url "https://linkedin.jfrog.io/artifactory/open-source/"
+    }
 }
 ```
 
